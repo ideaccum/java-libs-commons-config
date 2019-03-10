@@ -33,13 +33,13 @@ Commons Configは、外部プロパティリソース定義情報を利用する
 - プロパティ取得時のキャスト簡略化  
   通常のプロパティアクセスで発生する文字列型での値取得後の必要なキャスト処理を簡略化するために、予め目的型でのプロパティアクセスメソッドを提供します。  
 
-    public class UserLogic {
-      public void logic() {
-        String foo = Config.getString(UserConfigName.FOO);
-        int bar = Config.getInt(UserConfigName.BAR);
-        boolean hoge = Config.getBoolean(UserConfigName.HOGE);
-        ...
-      }
+      public class UserLogic {
+        public void logic() {
+          String foo = Config.getString(UserConfigName.FOO);
+          int bar = Config.getInt(UserConfigName.BAR);
+          boolean hoge = Config.getBoolean(UserConfigName.HOGE);
+          ...
+        }
 
 - プロパティ値の複数値定義  
   プロパティ値に複数の値を定義する場合、多くはカンマ区切り等のデリミタ文字を利用した定義になります。このパッケージではカンマ区切りされたプロパティを予め複数の定義情報として取得するアクセッサを提供します。また、複数定義した値のトークン先頭に"#"がある場合、プロパティ定義と同様にコメント扱いにする仕様として提供します。  
