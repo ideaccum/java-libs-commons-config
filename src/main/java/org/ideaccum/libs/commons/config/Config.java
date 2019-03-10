@@ -300,6 +300,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static boolean[] getBooleans(ConfigName name, boolean enableComment) {
@@ -339,6 +340,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static long[] getLongs(ConfigName name, boolean enableComment) {
@@ -378,6 +380,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static int[] getInts(ConfigName name, boolean enableComment) {
@@ -417,6 +420,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static short[] getShorts(ConfigName name, boolean enableComment) {
@@ -456,6 +460,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static double[] getDoubles(ConfigName name, boolean enableComment) {
@@ -495,6 +500,7 @@ public final class Config implements Serializable {
 	 * このメソッドではカンマ(",")区切りされているプロパティを配列定義として取得します。<br>
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
+	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
 	 */
 	public static float[] getFloats(ConfigName name, boolean enableComment) {
