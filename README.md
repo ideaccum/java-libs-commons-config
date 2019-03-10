@@ -74,4 +74,4 @@ Commons Configは、外部プロパティリソース定義情報を利用する
 Copyright (c) 2018 Hisanori Kitagawa  
 
 ## Other
-2005年より[SourceForge.jp](https://osdn.net/projects/phosphoresce/)にて公開していたリポジトリから移行し、更新しているライブラリとなります。  
+2010年より[SourceForge.jp](https://osdn.net/projects/phosphoresce/)にて公開していたリポジトリから移行し、更新しているライブラリとなります。  
