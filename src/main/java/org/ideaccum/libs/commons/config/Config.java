@@ -10,7 +10,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.ideaccum.libs.commons.config.exception.ConfigIOException;
-import org.ideaccum.libs.commons.util.ObjectUtil;
+import org.ideaccum.libs.commons.util.CollectionUtil;
 import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
 import org.ideaccum.libs.commons.util.StringUtil;
@@ -309,7 +309,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPBoolean(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Boolean[0]));
+		return CollectionUtil.cast(list.toArray(new Boolean[0]));
 	}
 
 	/**
@@ -349,7 +349,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPLong(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Long[0]));
+		return CollectionUtil.cast(list.toArray(new Long[0]));
 	}
 
 	/**
@@ -389,7 +389,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPInt(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Integer[0]));
+		return CollectionUtil.cast(list.toArray(new Integer[0]));
 	}
 
 	/**
@@ -429,7 +429,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPShort(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Short[0]));
+		return CollectionUtil.cast(list.toArray(new Short[0]));
 	}
 
 	/**
@@ -469,7 +469,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPDouble(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Double[0]));
+		return CollectionUtil.cast(list.toArray(new Double[0]));
 	}
 
 	/**
@@ -509,7 +509,7 @@ public final class Config implements Serializable {
 		for (String value : values) {
 			list.add(StringUtil.toPFloat(value));
 		}
-		return ObjectUtil.cast(list.toArray(new Float[0]));
+		return CollectionUtil.cast(list.toArray(new Float[0]));
 	}
 
 	/**
