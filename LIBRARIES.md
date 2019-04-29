@@ -1,4 +1,4 @@
-# Ideaccum Commons
+# Ideaccum Commons Config
 
 + org.ideaccum.libs.commons.config [[MIT License]]
   + org.ideaccum.libs.commons [[MIT License]]
