@@ -14,6 +14,7 @@ import org.ideaccum.libs.commons.util.CollectionUtil;
 import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
 import org.ideaccum.libs.commons.util.StringUtil;
+import org.reflections.Reflections;
 
 /**
  * 外部定義されたプロパティリソースへのアクセスを行うためのインタフェースを提供します。<br>
@@ -28,6 +29,7 @@ import org.ideaccum.libs.commons.util.StringUtil;
  * 更新日		更新者			更新内容
  * 2010/07/03	Kitagawa		新規作成
  * 2018/05/02	Kitagawa		再構築(SourceForge.jpからGitHubへの移行に併せて全面改訂)
+ * 2019/05/04	Kitagawa		ConfigName継承サブクラスを設置した際にサブクラスを参照する前にgetMapを利用するとキーセットが取得できないため、reflection,jarライブラリを利用して強制的にサブクラスをクラスロードするように修正
  *-->
  */
 public final class Config implements Serializable {
@@ -43,6 +45,18 @@ public final class Config implements Serializable {
 
 	/** プロパティ定義内容レンダラオブジェクト */
 	private ConfigValueRenderer renderer;
+
+	static {
+		Reflections reflections = new Reflections();
+		for (Class<?> clazz : reflections.getSubTypesOf(ConfigName.class)) {
+			//System.out.println("ConfigName sub types : " + clazz.getName());
+			try {
+				Class.forName(clazz.getName());
+			} catch (Throwable e) {
+				// Dummy class initialize for class load
+			}
+		}
+	}
 
 	/**
 	 * コンストラクタ<br>

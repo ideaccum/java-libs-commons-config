@@ -28,6 +28,13 @@
 	</build>
 	<dependencies>
 		<dependency>
+			<groupId>org.reflections</groupId>
+			<artifactId>reflections</artifactId>
+			<version>0.9.11</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/reflections-0.9.11.jar</systemPath>
+		</dependency>
+		<dependency>
 			<groupId>org.ideaccum</groupId>
 			<artifactId>org.ideaccum.libs.commons</artifactId>
 			<version>0.0.1-SNAPSHOT</version>

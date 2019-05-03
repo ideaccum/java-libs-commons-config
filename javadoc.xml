@@ -4,7 +4,7 @@
         <javadoc access="protected"
                  classpath="
                  ../org.ideaccum.libs.commons/target/classes;
-                 ../org.ideaccum.libs.commons.config/target/classes;
+                 ../org.ideaccum.libs.commons.config/lib/reflections-0.9.11.jar;
                  "
                  doctitle="org.ideaccum.libs.commons.config"
                  additionalparam="
