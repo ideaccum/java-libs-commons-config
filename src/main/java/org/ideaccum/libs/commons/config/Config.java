@@ -254,6 +254,18 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
 	 */
+	public static boolean isEmpty(ConfigName name) {
+		if (name == null) {
+			return true;
+		}
+		return !instance.properties.containsKey(name.getKey()) || StringUtil.isEmpty(instance.properties.getProperty(name.getKey()));
+	}
+
+	/**
+	 * プロパティ情報を文字列値として取得します。<br>
+	 * @param name プロパティアクセスキー
+	 * @return プロパティ情報
+	 */
 	public static String getString(ConfigName name) {
 		if (name == null) {
 			return "";
