@@ -19,9 +19,10 @@ import java.util.Map;
  * 更新日		更新者			更新内容
  * 2010/07/03	Kitagawa		新規作成
  * 2018/05/02	Kitagawa		再構築(SourceForge.jpからGitHubへの移行に併せて全面改訂)
+ * 2019/10/29	Kitagawa		ConfigNameに対してプロパティ定義値型を限定する仕様に変更
  *-->
  */
-public abstract class ConfigName implements Serializable {
+public abstract class ConfigName<T> implements Serializable {
 
 	/** ロックオブジェクト */
 	private static Object lock = new Object();
@@ -29,18 +30,33 @@ public abstract class ConfigName implements Serializable {
 	/** プロパティキー */
 	private String key;
 
+	/** プロパティパーサークラス */
+	private Class<? extends ConfigValueParser<?>> parserClass;
+
 	/** インスタンスキャッシュ */
-	private static Map<String, ConfigName> instances = new HashMap<>();
+	private static Map<String, ConfigName<?>> instances = new HashMap<>();
 
 	/**
 	 * コンストラクタ<br>
 	 * @param key プロパティキー
+	 * @param parserClass プロパティパーサークラス
 	 */
-	protected ConfigName(String key) {
+	protected ConfigName(String key, Class<? extends ConfigValueParser<T>> parserClass) {
 		synchronized (lock) {
 			this.key = key;
+			this.parserClass = parserClass;
 			instances.put(key, this);
 		}
+	}
+
+	/**
+	 * コンストラクタ<br>
+	 * @param key プロパティキー
+	 * @deprecated 当コンストラクタは将来的に削除予定となる為、{@link #ConfigName(String, Class)}を利用するようにしてください。
+	 */
+	@Deprecated
+	protected ConfigName(String key) {
+		this(key, null);
 	}
 
 	/**
@@ -62,12 +78,20 @@ public abstract class ConfigName implements Serializable {
 	}
 
 	/**
+	 * プロパティパーサークラスを取得します。<br>
+	 * @return プロパティパーサークラス
+	 */
+	protected final Class<? extends ConfigValueParser<?>> getParserClass() {
+		return parserClass;
+	}
+
+	/**
 	 * 指定されたプロパティキーのプロパティアクセスキーインスタンスを提供します。<br>
 	 * 管理されていないプロパティキーの場合はnullが返却されます。<br>
 	 * @param key プロパティキー文字列
 	 * @return プロパティアクセスキーインスタンス
 	 */
-	public static final ConfigName valueOf(String key) {
+	public static final ConfigName<?> valueOf(String key) {
 		if (!instances.containsKey(key)) {
 			return null;
 		}

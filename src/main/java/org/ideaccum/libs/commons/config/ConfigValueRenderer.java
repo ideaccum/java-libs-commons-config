@@ -21,5 +21,5 @@ public interface ConfigValueRenderer {
 	 * @param value プロパティ定義値
 	 * @return 補正後の定義値
 	 */
-	public String render(ConfigName name, String value);
+	public String render(ConfigName<?> name, String value);
 }

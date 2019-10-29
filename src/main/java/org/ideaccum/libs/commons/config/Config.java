@@ -10,6 +10,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.ideaccum.libs.commons.config.exception.ConfigIOException;
+import org.ideaccum.libs.commons.util.ClassUtil;
 import org.ideaccum.libs.commons.util.CollectionUtil;
 import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
@@ -30,6 +31,7 @@ import org.reflections.Reflections;
  * 2010/07/03	Kitagawa		新規作成
  * 2018/05/02	Kitagawa		再構築(SourceForge.jpからGitHubへの移行に併せて全面改訂)
  * 2019/05/04	Kitagawa		ConfigName継承サブクラスを設置した際にサブクラスを参照する前にgetMapを利用するとキーセットが取得できないため、reflection,jarライブラリを利用して強制的にサブクラスをクラスロードするように修正
+ * 2019/10/29	Kitagawa		ConfigNameに対してプロパティ定義値型を限定する仕様とし、get*****系のメソッドをDeplicatedに変更({@link #get(ConfigName)}を追加)
  *-->
  */
 public final class Config implements Serializable {
@@ -45,6 +47,9 @@ public final class Config implements Serializable {
 
 	/** プロパティ定義内容レンダラオブジェクト */
 	private ConfigValueRenderer renderer;
+
+	/** プロパティパースオブジェクト */
+	private Map<Class<? extends ConfigValueParser<?>>, ConfigValueParser<?>> parsers;
 
 	static {
 		Reflections reflections = new Reflections();
@@ -65,6 +70,7 @@ public final class Config implements Serializable {
 		super();
 		this.properties = new Properties();
 		this.renderer = null;
+		this.parsers = new HashMap<>();
 	}
 
 	/**
@@ -160,7 +166,7 @@ public final class Config implements Serializable {
 	 * @param object プロパティ定義情報
 	 * @return 必要に応じて補正した文字列
 	 */
-	private static String render(ConfigName name, Object object) {
+	private static String bind(ConfigName<?> name, Object object) {
 		String value = object == null ? "" : object.toString();
 		if (instance.renderer != null) {
 			return instance.renderer.render(name, value);
@@ -178,7 +184,7 @@ public final class Config implements Serializable {
 		for (Object setkey : instance.properties.keySet()) {
 			String key = setkey.toString();
 			Object value = instance.properties.get(key);
-			map.put(key.toString(), render(ConfigName.valueOf(key), value));
+			map.put(key.toString(), bind(ConfigName.valueOf(key), value));
 		}
 		return map;
 	}
@@ -224,10 +230,10 @@ public final class Config implements Serializable {
 	 * 但し、{@link org.ideaccum.libs.commons.config.ConfigName}として提供されないキーは除外されて提供されます。<br>
 	 * @return 管理されているプロパティキー
 	 */
-	public static Set<ConfigName> getNames() {
-		Set<ConfigName> set = new HashSet<>();
+	public static Set<ConfigName<?>> getNames() {
+		Set<ConfigName<?>> set = new HashSet<>();
 		for (Object key : instance.properties.keySet()) {
-			ConfigName name = ConfigName.valueOf(key.toString());
+			ConfigName<?> name = ConfigName.valueOf(key.toString());
 			if (name != null) {
 				set.add(name);
 			}
@@ -242,7 +248,7 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param value プロパティ値
 	 */
-	public static void put(ConfigName name, String value) {
+	public static void put(ConfigName<?> name, String value) {
 		if (name == null) {
 			throw new NullPointerException();
 		}
@@ -250,11 +256,43 @@ public final class Config implements Serializable {
 	}
 
 	/**
+	 * プロパティ情報を取得します。<br>
+	 * @param name プロパティアクセスキー
+	 * @return プロパティ情報
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> T get(ConfigName<T> name) {
+		if (name == null) {
+			return null;
+		}
+		String value = instance.properties.getProperty(name.getKey());
+		String render = bind(name, value);
+		if (!instance.parsers.containsKey(name.getParserClass())) {
+			instance.parsers.put(name.getParserClass(), ClassUtil.createInstance(name.getParserClass()));
+		}
+		return (T) instance.parsers.get(name.getParserClass()).parse(render);
+	}
+
+	/**
+	 * プロパティ情報を文字列情報として取得します。<br>
+	 * @param name プロパティアクセスキー
+	 * @return プロパティ情報
+	 */
+	public static String getProperty(ConfigName<?> name) {
+		if (name == null) {
+			return null;
+		}
+		String value = instance.properties.getProperty(name.getKey());
+		String render = bind(name, value);
+		return render;
+	}
+
+	/**
 	 * プロパティ情報を文字列値として取得します。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
 	 */
-	public static boolean isEmpty(ConfigName name) {
+	public static boolean isEmpty(ConfigName<?> name) {
 		if (name == null) {
 			return true;
 		}
@@ -265,13 +303,15 @@ public final class Config implements Serializable {
 	 * プロパティ情報を文字列値として取得します。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static String getString(ConfigName name) {
+	@Deprecated
+	public static String getString(ConfigName<?> name) {
 		if (name == null) {
 			return "";
 		}
 		String value = instance.properties.getProperty(name.getKey());
-		return render(name, value);
+		return bind(name, value);
 	}
 
 	/**
@@ -280,8 +320,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static String[] getStrings(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static String[] getStrings(ConfigName<?> name, boolean enableComment) {
 		String value = getString(name);
 		String[] tokens = StringUtil.isEmpty(value) ? new String[0] : value.split(",");
 		if (enableComment) {
@@ -305,8 +347,10 @@ public final class Config implements Serializable {
 	 * トークン先頭の"#"をコメント扱いとせずに全てのトークンを取得する場合は{@link #getStrings(ConfigName, boolean)}を利用して下さい。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static String[] getStrings(ConfigName name) {
+	@Deprecated
+	public static String[] getStrings(ConfigName<?> name) {
 		return getStrings(name, true);
 	}
 
@@ -315,8 +359,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static boolean getBoolean(ConfigName name) {
+	@Deprecated
+	public static boolean getBoolean(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPBoolean(value);
 	}
@@ -328,8 +374,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static boolean[] getBooleans(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static boolean[] getBooleans(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Boolean> list = new LinkedList<>();
 		for (String value : values) {
@@ -345,8 +393,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static boolean[] getBooleans(ConfigName name) {
+	@Deprecated
+	public static boolean[] getBooleans(ConfigName<?> name) {
 		return getBooleans(name, true);
 	}
 
@@ -355,8 +405,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合は0が返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static long getLong(ConfigName name) {
+	@Deprecated
+	public static long getLong(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPLong(value);
 	}
@@ -368,8 +420,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static long[] getLongs(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static long[] getLongs(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Long> list = new LinkedList<>();
 		for (String value : values) {
@@ -385,8 +439,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static long[] getLongs(ConfigName name) {
+	@Deprecated
+	public static long[] getLongs(ConfigName<?> name) {
 		return getLongs(name, true);
 	}
 
@@ -395,8 +451,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合は0が返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static int getInt(ConfigName name) {
+	@Deprecated
+	public static int getInt(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPInt(value);
 	}
@@ -408,8 +466,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static int[] getInts(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static int[] getInts(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Integer> list = new LinkedList<>();
 		for (String value : values) {
@@ -425,8 +485,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static int[] getInts(ConfigName name) {
+	@Deprecated
+	public static int[] getInts(ConfigName<?> name) {
 		return getInts(name, true);
 	}
 
@@ -435,8 +497,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合は0が返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static short getShort(ConfigName name) {
+	@Deprecated
+	public static short getShort(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPShort(value);
 	}
@@ -448,8 +512,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static short[] getShorts(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static short[] getShorts(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Short> list = new LinkedList<>();
 		for (String value : values) {
@@ -465,8 +531,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static short[] getShorts(ConfigName name) {
+	@Deprecated
+	public static short[] getShorts(ConfigName<?> name) {
 		return getShorts(name, true);
 	}
 
@@ -475,8 +543,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合は0が返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static double getDouble(ConfigName name) {
+	@Deprecated
+	public static double getDouble(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPDouble(value);
 	}
@@ -488,8 +558,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static double[] getDoubles(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static double[] getDoubles(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Double> list = new LinkedList<>();
 		for (String value : values) {
@@ -505,8 +577,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static double[] getDoubles(ConfigName name) {
+	@Deprecated
+	public static double[] getDoubles(ConfigName<?> name) {
 		return getDoubles(name, true);
 	}
 
@@ -515,8 +589,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合は0が返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static float getFloat(ConfigName name) {
+	@Deprecated
+	public static float getFloat(ConfigName<?> name) {
 		String value = getString(name);
 		return StringUtil.toPFloat(value);
 	}
@@ -528,8 +604,10 @@ public final class Config implements Serializable {
 	 * @param name プロパティアクセスキー
 	 * @param enableComment トークン先頭に"#"がある場合はコメント扱いとして取得対象から除外する場合にtrueを指定
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static float[] getFloats(ConfigName name, boolean enableComment) {
+	@Deprecated
+	public static float[] getFloats(ConfigName<?> name, boolean enableComment) {
 		String[] values = getStrings(name, enableComment);
 		List<Float> list = new LinkedList<>();
 		for (String value : values) {
@@ -545,8 +623,10 @@ public final class Config implements Serializable {
 	 * プロパティが未定義の場合はfalseが返却されます。<br>
 	 * @param name プロパティアクセスキー
 	 * @return プロパティ情報
+	 * @deprecated 当メソッドは将来的に削除予定となる為、{@link #get(ConfigName)}を利用するようにしてください。
 	 */
-	public static float[] getFloats(ConfigName name) {
+	@Deprecated
+	public static float[] getFloats(ConfigName<?> name) {
 		return getFloats(name, true);
 	}
 }
