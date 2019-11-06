@@ -1,9 +1,10 @@
 .settings/* linguist-vendored
-lib/* linguist-vendored
-.gitignore linguist-vendored
 .classpath linguist-vendored
 .project linguist-vendored
 LIBRARIES.md linguist-vendored
 LICENSE.md linguist-vendored
 README.md linguist-vendored
 pom.xml linguist-vendored
+src/main/java/javadoc-overview.html linguist-vendored
+src/main/java/javadoc-style.css linguist-vendored
+lib/* linguist-vendored

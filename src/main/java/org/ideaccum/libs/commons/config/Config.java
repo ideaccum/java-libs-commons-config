@@ -1,5 +1,7 @@
 package org.ideaccum.libs.commons.config;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +11,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.ideaccum.libs.commons.config.exception.ConfigIOException;
 import org.ideaccum.libs.commons.util.ClassUtil;
 import org.ideaccum.libs.commons.util.CollectionUtil;
@@ -16,6 +22,10 @@ import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
 import org.ideaccum.libs.commons.util.StringUtil;
 import org.reflections.Reflections;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 /**
  * 外部定義されたプロパティリソースへのアクセスを行うためのインタフェースを提供します。<br>
@@ -84,9 +94,11 @@ public final class Config implements Serializable {
 				/*
 				 * 対象プロパティ読み込み
 				 */
-				Properties loaded = new Properties();
-				if (!StringUtil.isEmpty(properties) && ResourceUtil.exists(properties)) {
-					loaded = PropertiesUtil.load(properties);
+				Properties loaded = null;
+				if (properties.endsWith(".xml")) {
+					loaded = loadFromXML(properties);
+				} else {
+					loaded = loadFromProperties(properties);
 				}
 
 				/*
@@ -113,6 +125,65 @@ public final class Config implements Serializable {
 				throw new ConfigIOException(e);
 			}
 		}
+	}
+
+	/**
+	 * プロパティリソースからプロパティを読み込みます。<br>
+	 * @param filepath プロパティリソースパス
+	 * @return 読み込まれたプロパティリソース
+	 * @throws IOException 入出力例外が発生した場合にスローされます
+	 */
+	private static Properties loadFromProperties(String filepath) throws IOException {
+		Properties properties = new Properties();
+		if (!StringUtil.isEmpty(filepath) && ResourceUtil.exists(filepath)) {
+			properties = PropertiesUtil.load(filepath);
+		}
+		return properties;
+	}
+
+	/**
+	 * XMLリソースからプロパティを読み込みます。<br>
+	 * @param filepath プロパティリソースパス
+	 * @return 読み込まれたプロパティリソース
+	 * @throws IOException 入出力例外が発生した場合にスローされます
+	 * @throws ParserConfigurationException XMLドキュメントビルダの生成に失敗した場合にスローされます
+	 * @throws SAXException XML定義形式が不正な場合にスローされます
+	 */
+	private static Properties loadFromXML(String filepath) throws IOException, ParserConfigurationException, SAXException {
+		Properties properties = new Properties();
+
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		Document document = builder.parse(new File(filepath));
+
+		Element propertiesElement = document.getDocumentElement();
+		if (!"properties".equals(propertiesElement.getNodeName())) {
+			throw new SAXException();
+		}
+
+		NodeList propertyElements = propertiesElement.getElementsByTagName("property");
+		for (int i = 0; i <= propertyElements.getLength() - 1; i++) {
+			Element propertyElement = (Element) propertyElements.item(i);
+			String propertyName = propertyElement.getAttribute("name");
+			if (StringUtil.isEmpty(propertyName)) {
+				throw new SAXException();
+			}
+
+			StringBuilder valueBuilder = new StringBuilder();
+			NodeList valueElements = propertyElement.getElementsByTagName("value");
+			for (int j = 0; j <= valueElements.getLength() - 1; j++) {
+				Element valueElement = (Element) valueElements.item(j);
+				String value = valueElement.getTextContent();
+				if (valueBuilder.toString().length() > 0) {
+					valueBuilder.append(",");
+				}
+				valueBuilder.append(value);
+			}
+
+			properties.put(propertyName, valueBuilder.toString());
+		}
+
+		return properties;
 	}
 
 	/**
