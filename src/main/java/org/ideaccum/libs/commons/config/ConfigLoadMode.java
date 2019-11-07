@@ -6,11 +6,9 @@ package org.ideaccum.libs.commons.config;
  * この列挙型で提供される読み込みモードは{@link org.ideaccum.libs.commons.config.Config#load(String, ConfigLoadMode)}で利用します。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2018/05/02	Kitagawa		新規作成
+ * 更新日      更新者           更新内容
+ * 2018/05/02  Kitagawa         新規作成
  *-->
  */
 public enum ConfigLoadMode {

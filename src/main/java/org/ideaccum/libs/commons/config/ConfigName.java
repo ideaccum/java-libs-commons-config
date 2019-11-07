@@ -13,13 +13,11 @@ import java.util.Map;
  * 尚、サブクラスとしてプロパティアクセスキークラスを実装する際は{@link #ConfigName(String)}コンストラクタをprotectedレベルで設置して下さい(あくまでも列挙フィールドインスタンス化の目的であり、publicとはしない)。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2010/07/03	Kitagawa		新規作成
- * 2018/05/02	Kitagawa		再構築(SourceForge.jpからGitHubへの移行に併せて全面改訂)
- * 2019/10/29	Kitagawa		ConfigNameに対してプロパティ定義値型を限定する仕様に変更
+ * 更新日      更新者           更新内容
+ * 2010/07/03  Kitagawa         新規作成
+ * 2018/05/02  Kitagawa         再構築(SourceForge.jpからGitHubへの移行に併せて全面改訂)
+ * 2019/10/29  Kitagawa         ConfigNameに対してプロパティ定義値型を限定する仕様に変更
  *-->
  */
 public abstract class ConfigName<T> implements Serializable {
@@ -47,16 +45,6 @@ public abstract class ConfigName<T> implements Serializable {
 			this.parserClass = parserClass;
 			instances.put(key, this);
 		}
-	}
-
-	/**
-	 * コンストラクタ<br>
-	 * @param key プロパティキー
-	 * @deprecated 当コンストラクタは将来的に削除予定となる為、{@link #ConfigName(String, Class)}を利用するようにしてください。
-	 */
-	@Deprecated
-	protected ConfigName(String key) {
-		this(key, null);
 	}
 
 	/**

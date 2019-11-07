@@ -9,11 +9,9 @@ import org.ideaccum.libs.commons.util.StringUtil;
  * プロパティ定義値を短整数値としてパースして提供します。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2019/10/29	Kitagawa		新規作成
+ * 更新日      更新者           更新内容
+ * 2019/10/29  Kitagawa         新規作成
  *-->
  */
 public class ShortParser implements ConfigValueParser<Short> {

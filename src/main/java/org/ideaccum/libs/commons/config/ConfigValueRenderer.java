@@ -6,11 +6,9 @@ package org.ideaccum.libs.commons.config;
  * 定義文字列上において動的なバインド変数としての定義を行い、プロパティ取得時に実値をバインドするなどの処理を提供することができます。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2018/07/06	Kitagawa		新規作成
+ * 更新日      更新者           更新内容
+ * 2018/07/06  Kitagawa         新規作成
  *-->
  */
 public interface ConfigValueRenderer {

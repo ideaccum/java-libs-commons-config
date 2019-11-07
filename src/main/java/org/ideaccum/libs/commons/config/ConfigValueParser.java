@@ -6,11 +6,9 @@ package org.ideaccum.libs.commons.config;
  * 定義上の文字列をJava側で理想する際の目的の方にパースするための処理を提供します。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2018/07/06	Kitagawa		新規作成
+ * 更新日      更新者           更新内容
+ * 2018/07/06  Kitagawa         新規作成
  *-->
  */
 public interface ConfigValueParser<T> {

@@ -8,11 +8,9 @@ import org.ideaccum.libs.commons.config.ConfigValueParser;
  * プロパティ定義値を文字列としてパースして提供します。<br>
  * </p>
  * 
- * @author Kitagawa<br>
- * 
  *<!--
- * 更新日		更新者			更新内容
- * 2019/10/29	Kitagawa		新規作成
+ * 更新日      更新者           更新内容
+ * 2019/10/29  Kitagawa         新規作成
  *-->
  */
 public class StringParser implements ConfigValueParser<String> {
