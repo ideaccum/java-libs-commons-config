@@ -13,7 +13,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.ideaccum.libs.commons.config.exception.ConfigIOException;
+import org.ideaccum.libs.commons.config.exception.ConfigException;
 import org.ideaccum.libs.commons.util.ClassUtil;
 import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
@@ -154,7 +154,7 @@ public final class Config implements Serializable {
 				}
 				return this;
 			} catch (Throwable e) {
-				throw new ConfigIOException(e);
+				throw new ConfigException(e);
 			}
 		}
 	}
@@ -280,6 +280,20 @@ public final class Config implements Serializable {
 	}
 
 	/**
+	 * 他のプロパティ情報内容を自身のインスタンスにマージします。<br>
+	 * マージされる対象はプロパティ内容のみで、プロパティ値レンダラは自身のレンダラが維持されることに注意してください。<br>
+	 * @param other マージ元インスタンス
+	 */
+	@SuppressWarnings("static-access")
+	public void merge(Config other) {
+		if (other == null || other.equals(this)) {
+			return;
+		}
+		this.global.properties.putAll(other.global.properties); // For other classloader
+		this.properties.putAll(other.properties);
+	}
+
+	/**
 	 * プロパティ定義内容レンダラオブジェクトを設定します。<br>
 	 * レンダラオブジェクトを設定した場合、各種プロパティ値取得時にレンダラ処理で値補正が行われたうえで値が提供されます。<br>
 	 * @param renderer プロパティ定義内容レンダラオブジェクト
@@ -363,9 +377,14 @@ public final class Config implements Serializable {
 	 */
 	public Map<String, Object> map() {
 		Map<String, Object> map = new HashMap<>();
-		for (ConfigName<?> name : keySet()) {
-			Object value = get(name);
-			map.put(name.getKey(), bind(name, value));
+		//for (ConfigName<?> name : keySet()) {
+		//	Object value = get(name);
+		//	map.put(name.getKey(), bind(name, value));
+		//}
+		for (Object key : properties.keySet()) {
+			String name = key.toString();
+			Object value = properties.get(key);
+			map.put(name, value);
 		}
 		return map;
 	}
