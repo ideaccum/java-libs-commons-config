@@ -1,7 +1,7 @@
 package org.ideaccum.libs.commons.config;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -100,13 +100,63 @@ public final class Config implements Serializable {
 	}
 
 	/**
+	 * オブジェクト情報を文字列として提供します。<br>
+	 * @return オブジェクト情報文字列
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return properties.toString();
+	}
+
+	/**
+	 * オブジェクトハッシュコードを取得します。<br>
+	 * @return オブジェクトハッシュコード
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((properties == null) ? 0 : properties.hashCode());
+		return result;
+	}
+
+	/**
+	 * オブジェクト等価比較を行います。<br>
+	 * @return 等価の場合にtrueを返却
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+		if (object == null) {
+			return false;
+		}
+		if (getClass() != object.getClass()) {
+			return false;
+		}
+		Config other = (Config) object;
+		if (properties == null) {
+			if (other.properties != null) {
+				return false;
+			}
+		} else if (!properties.equals(other.properties)) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
 	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
 	 * @param filePath プロパティリソースパス
+	 * @param mode プロパティ読み込み時の挙動
 	 * @param envName 環境毎の差分プロパティが存在する場合にこの名称を指定します(filePath(拡張子除く) + "_" + envName + "." + filePath(拡張子)が追加で読み込まれます)
-	 * @param mode プロパティ読み込み時の挙動(現在管理されているプロパティ情報を破棄して新たに読み込みます)
 	 * @return ロード後の自身のインスタンス
 	 */
-	public Config load(String filePath, String envName, ConfigLoadMode mode) {
+	public Config load(String filePath, ConfigLoadMode mode, String envName) {
 		synchronized (lock) {
 			try {
 				/*
@@ -166,30 +216,30 @@ public final class Config implements Serializable {
 	 * @return ロード後の自身のインスタンス
 	 */
 	public Config load(String filePath, ConfigLoadMode mode) {
-		return load(filePath, null, mode);
+		return load(filePath, mode, null);
 	}
 
 	/**
 	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
 	 * このメソッドによる読み込みは現在管理されているプロパティ情報を破棄して新たに読み込みます。<br>
-	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, String, ConfigLoadMode)}を利用して下さい。<br>
+	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, ConfigLoadMode, String)}を利用して下さい。<br>
 	 * @param filePath プロパティリソースパス
 	 * @param envName 環境毎の差分プロパティが存在する場合にこの名称を指定します(filePath(拡張子除く) + "_" + envName + "." + filePath(拡張子)が追加で読み込まれます)
 	 * @return ロード後の自身のインスタンス
 	 */
 	public Config load(String filePath, String envName) {
-		return load(filePath, envName, ConfigLoadMode.REPLACE_ALL);
+		return load(filePath, ConfigLoadMode.REPLACE_ALL, envName);
 	}
 
 	/**
 	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
 	 * このメソッドによる読み込みは現在管理されているプロパティ情報を破棄して新たに読み込みます。<br>
-	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, String, ConfigLoadMode)}を利用して下さい。<br>
+	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, ConfigLoadMode, String)}を利用して下さい。<br>
 	 * @param filePath プロパティリソースパス
 	 * @return ロード後の自身のインスタンス
 	 */
 	public Config load(String filePath) {
-		return load(filePath, null, ConfigLoadMode.REPLACE_ALL);
+		return load(filePath, ConfigLoadMode.REPLACE_ALL, null);
 	}
 
 	/**
@@ -234,40 +284,49 @@ public final class Config implements Serializable {
 	 * @throws SAXException XML定義形式が不正な場合にスローされます
 	 */
 	private Properties loadFromXML(String filePath) throws IOException, ParserConfigurationException, SAXException {
-		Properties properties = new Properties();
+		InputStream stream = null;
+		try {
+			Properties properties = new Properties();
 
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder builder = factory.newDocumentBuilder();
-		Document document = builder.parse(new File(filePath));
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder builder = factory.newDocumentBuilder();
 
-		Element propertiesElement = document.getDocumentElement();
-		if (!"properties".equals(propertiesElement.getNodeName())) {
-			throw new SAXException();
-		}
+			stream = ResourceUtil.getInputStream(filePath);
+			Document document = builder.parse(stream);
 
-		NodeList propertyElements = propertiesElement.getElementsByTagName("property");
-		for (int i = 0; i <= propertyElements.getLength() - 1; i++) {
-			Element propertyElement = (Element) propertyElements.item(i);
-			String propertyName = propertyElement.getAttribute("name");
-			if (StringUtil.isEmpty(propertyName)) {
-				throw new SAXException("value node is name attribute required");
+			Element propertiesElement = document.getDocumentElement();
+			if (!"properties".equals(propertiesElement.getNodeName())) {
+				throw new SAXException();
 			}
 
-			StringBuilder valueBuilder = new StringBuilder();
-			NodeList valueElements = propertyElement.getElementsByTagName("value");
-			for (int j = 0; j <= valueElements.getLength() - 1; j++) {
-				Element valueElement = (Element) valueElements.item(j);
-				String value = valueElement.getTextContent();
-				if (valueBuilder.toString().length() > 0) {
-					valueBuilder.append(",");
+			NodeList propertyElements = propertiesElement.getElementsByTagName("property");
+			for (int i = 0; i <= propertyElements.getLength() - 1; i++) {
+				Element propertyElement = (Element) propertyElements.item(i);
+				String propertyName = propertyElement.getAttribute("name");
+				if (StringUtil.isEmpty(propertyName)) {
+					throw new SAXException("value node is name attribute required");
 				}
-				valueBuilder.append(value);
+
+				StringBuilder valueBuilder = new StringBuilder();
+				NodeList valueElements = propertyElement.getElementsByTagName("value");
+				for (int j = 0; j <= valueElements.getLength() - 1; j++) {
+					Element valueElement = (Element) valueElements.item(j);
+					String value = valueElement.getTextContent();
+					if (valueBuilder.toString().length() > 0) {
+						valueBuilder.append(",");
+					}
+					valueBuilder.append(value);
+				}
+
+				properties.put(propertyName, valueBuilder.toString());
 			}
 
-			properties.put(propertyName, valueBuilder.toString());
+			return properties;
+		} finally {
+			if (stream != null) {
+				stream.close();
+			}
 		}
-
-		return properties;
 	}
 
 	/**
