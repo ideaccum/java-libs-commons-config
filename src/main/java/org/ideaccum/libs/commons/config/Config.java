@@ -153,34 +153,15 @@ public final class Config implements Serializable {
 	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
 	 * @param filePath プロパティリソースパス
 	 * @param mode プロパティ読み込み時の挙動
-	 * @param envName 環境毎の差分プロパティが存在する場合にこの名称を指定します(filePath(拡張子除く) + "_" + envName + "." + filePath(拡張子)が追加で読み込まれます)
 	 * @return ロード後の自身のインスタンス
 	 */
-	public Config load(String filePath, ConfigLoadMode mode, String envName) {
+	public Config load(String filePath, ConfigLoadMode mode) {
 		synchronized (lock) {
 			try {
 				/*
 				 * 対象プロパティ読み込み
 				 */
-				Properties loaded = null;
-				if (!StringUtil.isEmpty(envName)) {
-					// 通常環境定義読み込み
-					loaded = loadDispatch(filePath);
-
-					// 環境差分定義読み込み
-					String envFilePath = null;
-					if (filePath.indexOf(".") >= 0) {
-						envFilePath = filePath.substring(0, filePath.lastIndexOf(".")) + "_" + envName + "." + filePath.substring(filePath.lastIndexOf(".") + 1);
-					} else {
-						envFilePath = filePath + "_" + envName;
-					}
-					Properties envProp = loadDispatch(envFilePath);
-
-					// 環境差分定義上書き
-					loaded.putAll(envProp);
-				} else {
-					loaded = loadDispatch(filePath);
-				}
+				Properties loaded = loadDispatch(filePath);
 
 				/*
 				 * 読み込みモードごと処理
@@ -211,35 +192,13 @@ public final class Config implements Serializable {
 
 	/**
 	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
-	 * @param filePath プロパティリソースパス
-	 * @param mode プロパティ読み込み時の挙動(現在管理されているプロパティ情報を破棄して新たに読み込みます)
-	 * @return ロード後の自身のインスタンス
-	 */
-	public Config load(String filePath, ConfigLoadMode mode) {
-		return load(filePath, mode, null);
-	}
-
-	/**
-	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
-	 * このメソッドによる読み込みは現在管理されているプロパティ情報を破棄して新たに読み込みます。<br>
-	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, ConfigLoadMode, String)}を利用して下さい。<br>
-	 * @param filePath プロパティリソースパス
-	 * @param envName 環境毎の差分プロパティが存在する場合にこの名称を指定します(filePath(拡張子除く) + "_" + envName + "." + filePath(拡張子)が追加で読み込まれます)
-	 * @return ロード後の自身のインスタンス
-	 */
-	public Config load(String filePath, String envName) {
-		return load(filePath, ConfigLoadMode.REPLACE_ALL, envName);
-	}
-
-	/**
-	 * プロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
 	 * このメソッドによる読み込みは現在管理されているプロパティ情報を破棄して新たに読み込みます。<br>
 	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, ConfigLoadMode, String)}を利用して下さい。<br>
 	 * @param filePath プロパティリソースパス
 	 * @return ロード後の自身のインスタンス
 	 */
 	public Config load(String filePath) {
-		return load(filePath, ConfigLoadMode.REPLACE_ALL, null);
+		return load(filePath, ConfigLoadMode.REPLACE_ALL);
 	}
 
 	/**
