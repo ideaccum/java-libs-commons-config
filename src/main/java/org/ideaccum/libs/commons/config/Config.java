@@ -202,6 +202,47 @@ public final class Config implements Serializable {
 	}
 
 	/**
+	 * プロパティリソースの通常読込後、差分上書き読み込みします。<br>
+	 * このメソッドは標準プロパティリソース及び、環境毎の差分プロパティが提供される場合に、標準内容に対して環境毎の差分を適用する場合に利用することを想定したメソッドです。<br>
+	 * @param filePath 標準プロパティリソースパス
+	 * @param mode プロパティ読み込み時の挙動(この挙動は標準プロパティに対する読み込み挙動となります)
+	 * @param extendProps 差分読み込みプロパティリソースパス
+	 * @return ロード後の自身のインスタンス
+	 */
+	public Config load(String filePath, ConfigLoadMode mode, String... extendProps) {
+		if (extendProps == null || extendProps.length <= 0) {
+			return load(filePath, mode);
+		}
+		synchronized (lock) {
+			Config config = load(filePath, mode);
+			for (String extendProp : extendProps) {
+				config.load(extendProp, ConfigLoadMode.REPLACE_EXISTS);
+			}
+			return config;
+		}
+	}
+
+	/**
+	 * プロパティリソースの通常読込後、差分上書き読み込みします。<br>
+	 * このメソッドは標準プロパティリソース及び、環境毎の差分プロパティが提供される場合に、標準内容に対して環境毎の差分を適用する場合に利用することを想定したメソッドです。<br>
+	 * @param filePath 標準プロパティリソースパス
+	 * @param extendProps 差分読み込みプロパティリソースパス
+	 * @return ロード後の自身のインスタンス
+	 */
+	public Config load(String filePath, String... extendProps) {
+		if (extendProps == null || extendProps.length <= 0) {
+			return load(filePath);
+		}
+		synchronized (lock) {
+			Config config = load(filePath);
+			for (String extendProp : extendProps) {
+				config.load(extendProp, ConfigLoadMode.REPLACE_EXISTS);
+			}
+			return config;
+		}
+	}
+
+	/**
 	 * プロパティを読み込みます。<br>
 	 * @param filePath プロパティリソースパス
 	 * @return 読み込まれたプロパティリソース
@@ -210,7 +251,7 @@ public final class Config implements Serializable {
 	 * @throws SAXException XML定義形式が不正な場合にスローされます
 	 */
 	private Properties loadDispatch(String filePath) throws IOException, ParserConfigurationException, SAXException {
-		if (!ResourceUtil.exists(filePath)) {
+		if (StringUtil.isEmpty(filePath) || !ResourceUtil.exists(filePath)) {
 			return new Properties();
 		}
 		if (filePath.endsWith(".xml")) {
