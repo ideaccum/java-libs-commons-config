@@ -3,25 +3,21 @@ package org.ideaccum.libs.commons.config;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.bind.JAXB;
+import javax.xml.bind.annotation.XmlElement;
 
 import org.ideaccum.libs.commons.config.exception.ConfigException;
 import org.ideaccum.libs.commons.util.ClassUtil;
 import org.ideaccum.libs.commons.util.PropertiesUtil;
 import org.ideaccum.libs.commons.util.ResourceUtil;
 import org.ideaccum.libs.commons.util.StringUtil;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  * 外部定義されたプロパティリソースへのアクセスを行うためのインタフェースを提供します。<br>
@@ -39,6 +35,7 @@ import org.xml.sax.SAXException;
  * 2019/10/29  Kitagawa         ConfigNameに対してプロパティ定義値型を限定する仕様とし、get*****系のメソッドをDeplicatedに変更({@link #get(ConfigName)}を追加)
  * 2019/11/07  Kitagawa         get*****系メソッドを削除し、{@link #get(ConfigName)}を利用させることを強制
  * 2019/11/07  Kitagawa         シングルトンインスタンス取得と個別インスタンス生成後に利用するAPI構成に変更
+ * 2019/11/27  Kitagawa         XMLリソースからの読み込みはJAXBを用いた定義構成クラスをもとに解析する仕様に変更
  *-->
  */
 public final class Config implements Serializable {
@@ -161,28 +158,13 @@ public final class Config implements Serializable {
 				/*
 				 * 対象プロパティ読み込み
 				 */
-				Properties loaded = loadDispatch(filePath);
+				Properties loaded = loadFromProperties(filePath);
 
 				/*
-				 * 読み込みモードごと処理
+				 * プロパティ情報反映
 				 */
-				if (mode == ConfigLoadMode.REPLACE_ALL || mode == null) {
-					// すべてのプロパティを置き換える場合は現状の保持情報をクリア
-					properties.clear();
-					properties.putAll(loaded);
-				} else if (mode == ConfigLoadMode.REPLACE_EXISTS) {
-					// 既存プロパティに対しては上書きする場合は読み込んだプロパティをプット
-					properties.putAll(loaded);
-				} else if (mode == ConfigLoadMode.SKIP_EXISTS) {
-					// 既存プロパティに対しては現状維持とする場合はプロパティごとに判定しながらプット
-					for (Object key : loaded.keySet()) {
-						if (properties.containsKey(key)) {
-							continue;
-						}
-						Object value = loaded.get(key);
-						properties.put(key, value);
-					}
-				}
+				storeProperties(loaded, mode);
+
 				return this;
 			} catch (Throwable e) {
 				throw new ConfigException(e);
@@ -243,21 +225,80 @@ public final class Config implements Serializable {
 	}
 
 	/**
-	 * プロパティを読み込みます。<br>
-	 * @param filePath プロパティリソースパス
-	 * @return 読み込まれたプロパティリソース
-	 * @throws IOException 入出力例外が発生した場合にスローされます
-	 * @throws ParserConfigurationException XMLドキュメントビルダの生成に失敗した場合にスローされます
-	 * @throws SAXException XML定義形式が不正な場合にスローされます
+	 * XMLプロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
+	 * @param filePath XMLプロパティリソースパス
+	 * @param mode プロパティ読み込み時の挙動
+	 * @return ロード後の自身のインスタンス
 	 */
-	private Properties loadDispatch(String filePath) throws IOException, ParserConfigurationException, SAXException {
-		if (StringUtil.isEmpty(filePath) || !ResourceUtil.exists(filePath)) {
-			return new Properties();
+	public Config load(Class<?> type, String filePath, ConfigLoadMode mode) {
+		synchronized (lock) {
+			try {
+				/*
+				 * 対象プロパティ読み込み
+				 */
+				Properties loaded = loadFromXml(type, filePath);
+
+				/*
+				 * プロパティ情報反映
+				 */
+				storeProperties(loaded, mode);
+
+				return this;
+			} catch (Throwable e) {
+				throw new ConfigException(e);
+			}
 		}
-		if (filePath.endsWith(".xml")) {
-			return loadFromXML(filePath);
-		} else {
-			return loadFromProperties(filePath);
+	}
+
+	/**
+	 * XMLプロパティリソース内容を読み込みクラスインスタンスに展開します。<br>
+	 * このメソッドによる読み込みは現在管理されているプロパティ情報を破棄して新たに読み込みます。<br>
+	 * 読み込み方法を指定してプロパティを反映する場合は{@link #load(String, ConfigLoadMode)}又は、{@link #load(String, ConfigLoadMode, String)}を利用して下さい。<br>
+	 * @param filePath XMLプロパティリソースパス
+	 * @return ロード後の自身のインスタンス
+	 */
+	public Config load(Class<?> type, String filePath) {
+		return load(type, filePath, ConfigLoadMode.REPLACE_ALL);
+	}
+
+	/**
+	 * XMLプロパティリソースの通常読込後、差分上書き読み込みします。<br>
+	 * このメソッドは標準プロパティリソース及び、環境毎の差分プロパティが提供される場合に、標準内容に対して環境毎の差分を適用する場合に利用することを想定したメソッドです。<br>
+	 * @param filePath 標準XMLプロパティリソースパス
+	 * @param mode プロパティ読み込み時の挙動(この挙動は標準プロパティに対する読み込み挙動となります)
+	 * @param extendProps 差分読み込みXMLプロパティリソースパス
+	 * @return ロード後の自身のインスタンス
+	 */
+	public Config load(Class<?> type, String filePath, ConfigLoadMode mode, String... extendProps) {
+		if (extendProps == null || extendProps.length <= 0) {
+			return load(type, filePath, mode);
+		}
+		synchronized (lock) {
+			Config config = load(type, filePath, mode);
+			for (String extendProp : extendProps) {
+				config.load(type, extendProp, ConfigLoadMode.REPLACE_EXISTS);
+			}
+			return config;
+		}
+	}
+
+	/**
+	 * XMLプロパティリソースの通常読込後、差分上書き読み込みします。<br>
+	 * このメソッドは標準プロパティリソース及び、環境毎の差分プロパティが提供される場合に、標準内容に対して環境毎の差分を適用する場合に利用することを想定したメソッドです。<br>
+	 * @param filePath 標準XMLプロパティリソースパス
+	 * @param extendProps 差分読み込みXMLプロパティリソースパス
+	 * @return ロード後の自身のインスタンス
+	 */
+	public Config load(Class<?> type, String filePath, String... extendProps) {
+		if (extendProps == null || extendProps.length <= 0) {
+			return load(type, filePath);
+		}
+		synchronized (lock) {
+			Config config = load(type, filePath);
+			for (String extendProp : extendProps) {
+				config.load(type, extendProp, ConfigLoadMode.REPLACE_EXISTS);
+			}
+			return config;
 		}
 	}
 
@@ -277,54 +318,76 @@ public final class Config implements Serializable {
 
 	/**
 	 * XMLリソースからプロパティを読み込みます。<br>
+	 * @param type XML構造クラス
 	 * @param filePath プロパティリソースパス
 	 * @return 読み込まれたプロパティリソース
 	 * @throws IOException 入出力例外が発生した場合にスローされます
-	 * @throws ParserConfigurationException XMLドキュメントビルダの生成に失敗した場合にスローされます
-	 * @throws SAXException XML定義形式が不正な場合にスローされます
 	 */
-	private Properties loadFromXML(String filePath) throws IOException, ParserConfigurationException, SAXException {
+	private Properties loadFromXml(Class<?> type, String filePath) throws IOException {
 		InputStream stream = null;
 		try {
-			Properties properties = new Properties();
-
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder builder = factory.newDocumentBuilder();
-
 			stream = ResourceUtil.getInputStream(filePath);
-			Document document = builder.parse(stream);
-
-			Element propertiesElement = document.getDocumentElement();
-			if (!"properties".equals(propertiesElement.getNodeName())) {
-				throw new SAXException();
-			}
-
-			NodeList propertyElements = propertiesElement.getElementsByTagName("property");
-			for (int i = 0; i <= propertyElements.getLength() - 1; i++) {
-				Element propertyElement = (Element) propertyElements.item(i);
-				String propertyName = propertyElement.getAttribute("name");
-				if (StringUtil.isEmpty(propertyName)) {
-					throw new SAXException("value node is name attribute required");
-				}
-
-				StringBuilder valueBuilder = new StringBuilder();
-				NodeList valueElements = propertyElement.getElementsByTagName("value");
-				for (int j = 0; j <= valueElements.getLength() - 1; j++) {
-					Element valueElement = (Element) valueElements.item(j);
-					String value = valueElement.getTextContent();
-					if (valueBuilder.toString().length() > 0) {
-						valueBuilder.append(",");
-					}
-					valueBuilder.append(value);
-				}
-
-				properties.put(propertyName, valueBuilder.toString());
-			}
-
+			Object object = JAXB.unmarshal(stream, type);
+			Properties properties = new Properties();
+			analyzeXml(properties, null, object);
 			return properties;
 		} finally {
 			if (stream != null) {
 				stream.close();
+			}
+		}
+	}
+
+	/**
+	 * XMLリソースから読み込まれたオブジェクトを元にプロパティリソースに展開します。<br>
+	 * @param properties 展開先プロパティリソース
+	 * @param activeName 解析中プロパティキー
+	 * @param object 解析対象プロパティ要素
+	 */
+	private boolean analyzeXml(Properties properties, String activeName, Object object) {
+		boolean reflected = false;
+		for (Field field : ClassUtil.getFields(object.getClass())) {
+			XmlElement element = ClassUtil.getAnnotation(field, XmlElement.class);
+			if (element == null) {
+				continue;
+			}
+			String elementName = !"##default".equals(element.name()) ? element.name() : field.getName();
+			String actualName = StringUtil.isEmpty(activeName) ? elementName : activeName + "." + elementName;
+			Object value = ClassUtil.getFieldValue(object, field);
+			properties.put(actualName, value == null ? "" : value);
+			if (value == null) {
+				reflected = true;
+			} else if (analyzeXml(properties, actualName, value)) {
+				// 下位階層で反映された場合は自プロパティは除去
+				properties.remove(actualName);
+			} else {
+				reflected = true;
+			}
+		}
+		return reflected;
+	}
+
+	/**
+	 * 読み込みモードごとに読み込まれたプロパティ情報をインスタンスに反映します。<br>
+	 * @param loaded 読み込まれたプロパティ情報
+	 * @param mode 読み込みモード
+	 */
+	private void storeProperties(Properties loaded, ConfigLoadMode mode) {
+		if (mode == ConfigLoadMode.REPLACE_ALL || mode == null) {
+			// すべてのプロパティを置き換える場合は現状の保持情報をクリア
+			properties.clear();
+			properties.putAll(loaded);
+		} else if (mode == ConfigLoadMode.REPLACE_EXISTS) {
+			// 既存プロパティに対しては上書きする場合は読み込んだプロパティをプット
+			properties.putAll(loaded);
+		} else if (mode == ConfigLoadMode.SKIP_EXISTS) {
+			// 既存プロパティに対しては現状維持とする場合はプロパティごとに判定しながらプット
+			for (Object key : loaded.keySet()) {
+				if (properties.containsKey(key)) {
+					continue;
+				}
+				Object value = loaded.get(key);
+				properties.put(key, value);
 			}
 		}
 	}
